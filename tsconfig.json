@@ -7,14 +7,12 @@
       "@/*": [
         "./*"
       ]
-    //   "typeRoots": ["./node_modules/@types", "./types"]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts", 
-    // "./node_modules/@types/types/react-native-canvas.d.ts"  
-    ]
+    "expo-env.d.ts"
+  ]
 }

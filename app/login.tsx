@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Button, Alert, Image, Dimensions } from 'react-native';
+import { StyleSheet, TextInput, Button, Alert, Image, Dimensions, useColorScheme } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
@@ -23,6 +23,12 @@ export default function LoginScreen() {
 
     const { height } = Dimensions.get('window');
     const dynamicPadding = height * 0.05;
+
+    const colorScheme = useColorScheme();
+    const styles = StyleSheet.create({
+        ...mainStyles,
+        ...(colorScheme === 'light' ? lightStyles : darkStyles),
+    });
 
     const handleOrientationChange = () => {
         const { width, height } = Dimensions.get('window');
@@ -143,7 +149,7 @@ export default function LoginScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const mainStyles = StyleSheet.create({
     container: {
         flex: 1,
     },
@@ -158,13 +164,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 10,
     },
-    input: {
-        height: 40,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        marginBottom: 20,
-        paddingHorizontal: 10,
-    },
     imageContainer: {
         alignItems: 'center',
         // marginBottom: 50,
@@ -173,5 +172,27 @@ const styles = StyleSheet.create({
         width: '70%',
         height: 300,
         resizeMode: 'contain',
+    },
+});
+
+const lightStyles = StyleSheet.create({
+    input: {
+        height: 40,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        marginBottom: 20,
+        paddingHorizontal: 10,
+        color: 'black',
+    },
+});
+
+const darkStyles = StyleSheet.create({
+    input: {
+        height: 40,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        marginBottom: 20,
+        paddingHorizontal: 10,
+        color: 'white',
     },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Alert, ScrollView, Dimensions, View, Modal, TouchableOpacity } from 'react-native';
+import { StyleSheet, TextInput, Alert, ScrollView, Dimensions, View, Modal, TouchableOpacity, useColorScheme } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Text} from '@/components/Themed';
 import NGROK_URL from '@/config';
@@ -52,6 +52,7 @@ export default function VehicleIncidentsScreen() {
     const [viData, setViData] = useState<VehicleIncidentsItem[]>([]);
     const [filteredData, setFilteredData] = useState<VehicleIncidentsItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [permissions, setPermissions] = useState<any>(null);
     const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
 
     const [searchValue, setSearchValue] = useState('');
@@ -72,6 +73,12 @@ export default function VehicleIncidentsScreen() {
     const [hasSuccessfulResponse, setHasSuccessfulResponse] = useState(false);
     const [hasDebounced, setHasDebounced] = useState(false);
 
+
+    const colorScheme = useColorScheme();
+    const styles = StyleSheet.create({
+        ...mainStyles,
+        ...(colorScheme === 'light' ? lightStyles : darkStyles),
+    });
 
     useEffect(() => {
         const fetchVehicleIncidents = async (page=1) => {
@@ -217,15 +224,17 @@ export default function VehicleIncidentsScreen() {
         <TouchableOpacity
             key={item.id}
             onLongPress={() => {
-                setSelectedRow(item);
-                setModalVisible(true);
+                if (hasRequiredPermissions('is_staff', 'is_superuser')) {
+                    setSelectedRow(item);
+                    setModalVisible(true);
+                }
             }}
-            delayLongPress={300}
+            delayLongPress={hasRequiredPermissions('is_staff', 'is_superuser') ? 500 : undefined}
         >
             <View style={[styles.tableRow, { backgroundColor: getStatusBackgroundColor(item.status || '') }]}>
                 {vehicleIncidentsItemKeys.map((key, index) => (
                     <View key={key} style={[styles.tableCell, index !== vehicleIncidentsItemKeys.length - 1 && styles.borderRight]}>
-                        <Text>{item[key] !== undefined && item[key] !== null ? item[key].toString() : ''}</Text>
+                        <Text style={styles.tableCellText}>{item[key] !== undefined && item[key] !== null ? item[key].toString() : ''}</Text>
                     </View>
                 ))}
             </View>
@@ -401,6 +410,22 @@ export default function VehicleIncidentsScreen() {
         setFilteredData(filtered);
     };
 
+    useEffect(() => {
+        const fetchPermissions = async () => {
+            const storedPermissions = await AsyncStorage.getItem('userPermissions');
+            if (storedPermissions) {
+                setPermissions(JSON.parse(storedPermissions));
+            }
+        };
+
+        fetchPermissions();
+    }, []);
+
+    const hasRequiredPermissions = (...requiredPermissions: string[]) => {
+        if (!permissions) return false;
+        return requiredPermissions.some(permission => permissions[permission]);
+    };
+
     const oosYesNoOptions = ['Yes', 'No'];
 
     const statusOptions = ['At Body Shop', 'At Mechanic', 'Complete', 'Pending Payment', 'Ready for Pickup', 'Reported'];
@@ -451,15 +476,16 @@ export default function VehicleIncidentsScreen() {
             </View>
 
             <View style={styles.addAndPaginationContainer}>
-
-                <View style={styles.addButtonContainer}>
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={handleAddButtonPress}
-                    >
-                        <Text style={styles.addButtonText}>Add</Text>
-                    </TouchableOpacity>
-                </View>
+                {hasRequiredPermissions('is_staff', 'is_superuser') && (
+                    <View style={styles.addButtonContainer}>
+                        <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={handleAddButtonPress}
+                        >
+                            <Text style={styles.addButtonText}>Add</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.paginationContainer}>
                     <TouchableOpacity
@@ -673,18 +699,7 @@ export default function VehicleIncidentsScreen() {
 }
 
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginVertical: 10,
-    },
+const mainStyles = StyleSheet.create({
     separator: {
         marginVertical: 30,
         height: 1,
@@ -697,14 +712,6 @@ const styles = StyleSheet.create({
         height: 40,
         alignItems: 'center',
     },
-    searchInput: {
-        flex: 1,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        padding: 10,
-        marginRight: 10,
-        height: '100%',
-    },
     arrowsContainer: {
         flexDirection: 'column',
         justifyContent: 'center',
@@ -714,32 +721,6 @@ const styles = StyleSheet.create({
     pickerContainer: {
         alignItems: 'center',
         width: '50%', // Adjust the width as needed
-    },
-    picker: {
-        width: '100%', // Adjust the width as needed
-        borderColor: '#ccc',
-        borderWidth: 1,
-        padding: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    pickerItem: {
-        fontSize: 15,
-        textAlign: 'center', // Center align the text
-    },
-    pickerDropdown: {
-        position: 'absolute',
-        top: '100%',
-        width: '100%',
-        backgroundColor: '#fff',
-        borderColor: '#ccc',
-        borderWidth: 1,
-        zIndex: 1,
-    },
-    pickerDropdownItem: {
-        padding: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc',
     },
 
     oosButtonContainer: {
@@ -761,11 +742,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         borderBottomWidth: 1,
         borderBottomColor: '#ccc',
+        color: 'black',
     },
     tableHeader: {
         fontWeight: 'bold',
         backgroundColor: '#83B1FE',
-        
+        color: 'black',
     },
     tableCell: {
         flex: 1,
@@ -775,6 +757,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         textAlign: 'center',
         alignItems: 'center',
+    },
+    tableCellText: {
+        color: 'black',
     },
     borderRight: {
         borderRightWidth: 1,
@@ -836,33 +821,13 @@ const styles = StyleSheet.create({
         // marginTop: 75,
         paddingVertical: 20,
     },
-    modalContent: {
-        width: '95%',
-        padding: 20,
-        backgroundColor: 'white',
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
+    
     modalRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 10,
     },
-    modalLabel: {
-        flex: 1,
-        fontWeight: 'bold',
-    },
-    modalInput: {
-        flex: 2,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        padding: 5,
-    },
+    
     modalInputPicker: {
         flex: 2,
         borderColor: '#ccc',
@@ -899,5 +864,165 @@ const styles = StyleSheet.create({
     closeButtonText: {
         color: 'white',
         fontWeight: 'bold',
+    },
+});
+
+const lightStyles = StyleSheet.create({
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        backgroundColor: 'white',
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginVertical: 10,
+        color: 'black',
+    },
+    searchInput: {
+        flex: 1,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 10,
+        marginRight: 10,
+        height: '100%',
+        color: 'black',
+    },
+    modalContent: {
+        width: '95%',
+        padding: 20,
+        backgroundColor: 'white',
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: 'black',
+    },
+    modalLabel: {
+        flex: 1,
+        fontWeight: 'bold',
+        color: 'black',
+    },
+    modalInput: {
+        flex: 2,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 5,
+        color: 'black',
+    },
+    picker: {
+        width: '100%', // Adjust the width as needed
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff', // Light mode background
+    },
+    pickerItem: {
+        fontSize: 15,
+        textAlign: 'center', // Center align the text
+        color: 'black', // Light mode text color
+    },
+    pickerDropdown: {
+        position: 'absolute',
+        top: '100%',
+        width: '100%',
+        backgroundColor: '#fff', // Light mode background
+        borderColor: '#ccc',
+        borderWidth: 1,
+        zIndex: 1,
+    },
+    pickerDropdownItem: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ccc',
+        color: 'black', // Light mode text color
+    },
+
+});
+
+const darkStyles = StyleSheet.create({
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        backgroundColor: 'black',
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginVertical: 10,
+        color: 'white',
+    },
+    searchInput: {
+        flex: 1,
+        borderColor: '#ccc',
+        backgroundColor: '#333', // Dark mode background
+        borderWidth: 1,
+        padding: 10,
+        marginRight: 10,
+        height: '100%',
+        color: 'white',
+    },
+    modalContent: {
+        width: '95%',
+        padding: 20,
+        backgroundColor: 'black',
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: 'white',
+    },
+    modalLabel: {
+        flex: 1,
+        fontWeight: 'bold',
+        color: 'white',
+    },
+    modalInput: {
+        flex: 2,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 5,
+        color: 'white',
+    },
+    picker: {
+        width: '100%', // Adjust the width as needed
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#333', // Dark mode background
+    },
+    pickerItem: {
+        fontSize: 15,
+        textAlign: 'center', // Center align the text
+        color: 'white', // Dark mode text color
+    },
+    pickerDropdown: {
+        position: 'absolute',
+        top: '100%',
+        width: '100%',
+        backgroundColor: '#333', // Dark mode background
+        borderColor: '#ccc',
+        borderWidth: 1,
+        zIndex: 1,
+    },
+    pickerDropdownItem: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ccc',
+        color: 'white', // Dark mode text color
     },
 });

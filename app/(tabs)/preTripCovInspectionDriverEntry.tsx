@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, TextInput, Alert, ScrollView, Dimensions, View, Modal, TouchableOpacity, Button, Image, TouchableWithoutFeedback, FlatList } from 'react-native';
-import { launchCamera } from 'react-native-image-picker';
-import { Picker } from '@react-native-picker/picker';
+// import { launchCamera } from 'react-native-image-picker';
+// import { Picker } from '@react-native-picker/picker';
 import { Text} from '@/components/Themed';
 import NGROK_URL from '@/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { blue } from 'react-native-reanimated/lib/typescript/Colors';
+// import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+// import DateTimePicker from '@react-native-community/datetimepicker';
+// import FontAwesome from 'react-native-vector-icons/FontAwesome';
+// import { blue } from 'react-native-reanimated/lib/typescript/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera } from 'expo-camera';
-import { launchImageLibrary } from 'react-native-image-picker';
+// import { launchImageLibrary } from 'react-native-image-picker';
 import * as FileSystem from 'expo-file-system';
 import Svg, { Circle, Image as SvgImage } from 'react-native-svg';
 import { captureRef } from 'react-native-view-shot';
-import RNFS from 'react-native-fs';
+// import RNFS from 'react-native-fs';
 import FormData from 'form-data';
-import axios from 'axios';
+// import axios from 'axios';
 
 
 interface InspectionReport {

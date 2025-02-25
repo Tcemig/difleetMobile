@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Button, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, TextInput, Button, Alert, ActivityIndicator, ScrollView, useColorScheme } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NGROK_URL from '@/config';
@@ -14,6 +14,12 @@ type AccountInfo = {
 export default function AccountInformationScreen() {
     const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
+
+    const colorScheme = useColorScheme();
+    const styles = StyleSheet.create({
+        ...mainStyles,
+        ...(colorScheme === 'light' ? lightStyles : darkStyles),
+    });
 
     useEffect(() => {
         fetchAccountInfo();
@@ -96,7 +102,7 @@ export default function AccountInformationScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const mainStyles = StyleSheet.create({
     container: {
         flex: 1,
         alignItems: 'center',
@@ -118,7 +124,9 @@ const styles = StyleSheet.create({
         height: 1,
         width: '80%',
     },
+});
 
+const lightStyles = StyleSheet.create({
     table: {
         borderWidth: 1,
         borderColor: 'black',
@@ -134,6 +142,29 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRightWidth: 1,
         borderColor: 'black',
+        textAlign: 'center', // Center text horizontally
+        justifyContent: 'center', // Center content vertically
+        alignItems: 'center', // Center content horizontally
+        alignContent: 'center', // Center content vertically
+    },
+});
+
+const darkStyles = StyleSheet.create({
+    table: {
+        borderWidth: 1,
+        borderColor: 'white',
+        width: '100%',
+    },
+    tableRow: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderColor: 'white',
+    },
+    tableCell: {
+        flex: 1,
+        padding: 10,
+        borderRightWidth: 1,
+        borderColor: 'white',
         textAlign: 'center', // Center text horizontally
         justifyContent: 'center', // Center content vertically
         alignItems: 'center', // Center content horizontally

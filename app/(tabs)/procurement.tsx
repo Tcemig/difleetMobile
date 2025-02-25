@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Alert, ScrollView, Dimensions, RefreshControl, View, Modal, TouchableOpacity } from 'react-native';
+import { StyleSheet, TextInput, Alert, ScrollView, Dimensions, RefreshControl, View, Modal, TouchableOpacity, useColorScheme } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Text} from '@/components/Themed';
 import NGROK_URL from '@/config';
@@ -54,6 +54,13 @@ interface ActiveInsuredVehiclesItem {
     vin: string;
 }
 
+type AccountInfo = {
+    id: number;
+    email: string;
+    username: string;
+    phone_number: string;
+};
+
 
 export default function ProcurementScreen() {
     const [data, setData] = useState<ProcurementItem[]>([]);
@@ -73,6 +80,14 @@ export default function ProcurementScreen() {
     const [isAddMode, setIsAddMode] = useState(false);
     const [dropdownVisible, setDropdownVisible] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [permissions, setPermissions] = useState<any>(null);
+
+
+    const colorScheme = useColorScheme();
+    const styles = StyleSheet.create({
+        ...mainStyles,
+        ...(colorScheme === 'light' ? lightStyles : darkStyles),
+    });
     
     const fetchProcurementData = async (page = 1) => {
         const token = await AsyncStorage.getItem('userToken');
@@ -204,10 +219,12 @@ export default function ProcurementScreen() {
         <TouchableOpacity
             key={item.id}
             onLongPress={() => {
-                setSelectedRow(item);
-                setModalVisible(true);
+                if (hasRequiredPermissions('is_staff', 'is_superuser')) {
+                    setSelectedRow(item);
+                    setModalVisible(true);
+                }
             }}
-            delayLongPress={500}
+            delayLongPress={hasRequiredPermissions('is_staff', 'is_superuser') ? 500 : undefined}
         >
             <View style={styles.tableRow}>
                 {procurementItemKeys.map((key, index) => (
@@ -374,6 +391,22 @@ export default function ProcurementScreen() {
         { label: 'December', value: 'December' },
     ];
 
+    useEffect(() => {
+        const fetchPermissions = async () => {
+            const storedPermissions = await AsyncStorage.getItem('userPermissions');
+            if (storedPermissions) {
+                setPermissions(JSON.parse(storedPermissions));
+            }
+        };
+
+        fetchPermissions();
+    }, []);
+
+    const hasRequiredPermissions = (...requiredPermissions: string[]) => {
+        if (!permissions) return false;
+        return requiredPermissions.some(permission => permissions[permission]);
+    };
+
     return (
         <ScrollView
             contentContainerStyle={styles.container}
@@ -417,15 +450,16 @@ export default function ProcurementScreen() {
             </View>
 
             <View style={styles.addAndPaginationContainer}>
-
-                <View style={styles.addButtonContainer}>
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={handleAddButtonPress}
-                    >
-                        <Text style={styles.addButtonText}>Add</Text>
-                    </TouchableOpacity>
-                </View>
+                {hasRequiredPermissions('is_staff', 'is_superuser') && (
+                    <View style={styles.addButtonContainer}>
+                        <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={handleAddButtonPress}
+                        >
+                            <Text style={styles.addButtonText}>Add</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.paginationContainer}>
                     <TouchableOpacity
@@ -559,37 +593,13 @@ export default function ProcurementScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginVertical: 10,
-    },
-    separator: {
-        marginVertical: 30,
-        height: 1,
-        width: '80%',
-    },
+const mainStyles = StyleSheet.create({
 
     searchContainer: {
         flexDirection: 'row',
         marginBottom: 10,
         height: 40,
         alignItems: 'center',
-    },
-    searchInput: {
-        flex: 1,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        padding: 10,
-        marginRight: 10,
-        height: '100%',
     },
     arrowsContainer: {
         flexDirection: 'column',
@@ -601,32 +611,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '50%', // Adjust the width as needed
     },
-    picker: {
-        width: '100%', // Adjust the width as needed
-        borderColor: '#ccc',
-        borderWidth: 1,
-        padding: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    pickerItem: {
-        fontSize: 15,
-        textAlign: 'center', // Center align the text
-    },
-    pickerDropdown: {
-        position: 'absolute',
-        top: '100%',
-        width: '100%',
-        backgroundColor: '#fff',
-        borderColor: '#ccc',
-        borderWidth: 1,
-        zIndex: 1,
-    },
-    pickerDropdownItem: {
-        padding: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc',
-    },
+    // pickerItem: {
+    //     fontSize: 15,
+    //     textAlign: 'center', // Center align the text
+    // },
+    // pickerDropdown: {
+    //     position: 'absolute',
+    //     top: '100%',
+    //     width: '100%',
+    //     backgroundColor: '#fff',
+    //     borderColor: '#ccc',
+    //     borderWidth: 1,
+    //     zIndex: 1,
+    // },
+    // pickerDropdownItem: {
+    //     padding: 10,
+    //     borderBottomWidth: 1,
+    //     borderBottomColor: '#ccc',
+    // },
 
     tableRow: {
         flexDirection: 'row',
@@ -707,32 +709,10 @@ const styles = StyleSheet.create({
         // marginTop: 75,
         paddingVertical: 20,
     },
-    modalContent: {
-        width: '95%',
-        padding: 20,
-        backgroundColor: 'white',
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
     modalRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 10,
-    },
-    modalLabel: {
-        flex: 1,
-        fontWeight: 'bold',
-    },
-    modalInput: {
-        flex: 2,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        padding: 5,
     },
     modalInputPicker: {
         flex: 2,
@@ -750,6 +730,92 @@ const styles = StyleSheet.create({
     frozenInput: {
         backgroundColor: '#d3d3d3',
     },
+});
+
+const lightStyles = StyleSheet.create({
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        backgroundColor: 'white',
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginVertical: 10,
+        color: 'black',
+    },
+    searchInput: {
+        flex: 1,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 10,
+        marginRight: 10,
+        height: '100%',
+        color: 'white',
+    },
+    separator: {
+        marginVertical: 30,
+        height: 1,
+        width: '80%',
+        backgroundColor: '#ccc',
+    },
+    picker: {
+        width: '100%', // Adjust the width as needed
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff', // Light mode background
+    },
+    pickerItem: {
+        fontSize: 15,
+        textAlign: 'center', // Center align the text
+        color: 'black', // Light mode text color
+    },
+    pickerDropdown: {
+        position: 'absolute',
+        top: '100%',
+        width: '100%',
+        backgroundColor: '#fff', // Light mode background
+        borderColor: '#ccc',
+        borderWidth: 1,
+        zIndex: 1,
+    },
+    pickerDropdownItem: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ccc',
+        color: 'black', // Light mode text color
+    },
+    // ...other styles...
+    modalContent: {
+        width: '95%',
+        padding: 20,
+        backgroundColor: 'white',
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: 'black',
+    },
+    modalLabel: {
+        flex: 1,
+        fontWeight: 'bold',
+        color: 'black',
+    },
+    modalInput: {
+        flex: 2,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 5,
+        color: 'black',
+    },
     saveButton: {
         padding: 10,
         backgroundColor: '#4CAF50',
@@ -760,7 +826,112 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: 'bold',
     },
+    closeButton: {
+        marginTop: 20,
+        padding: 10,
+        backgroundColor: '#2196F3',
+        borderRadius: 5,
+    },
+    closeButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
+});
 
+const darkStyles = StyleSheet.create({
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        backgroundColor: 'black',
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginVertical: 10,
+        color: 'white',
+    },
+    searchInput: {
+        flex: 1,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 10,
+        marginRight: 10,
+        height: '100%',
+        color: 'white',
+    },
+    separator: {
+        marginVertical: 30,
+        height: 1,
+        width: '80%',
+        backgroundColor: '#444',
+    },
+    picker: {
+        width: '100%', // Adjust the width as needed
+        borderColor: '#ccc',
+        borderWidth: 1,
+        padding: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#333', // Dark mode background
+    },
+    pickerItem: {
+        fontSize: 15,
+        textAlign: 'center', // Center align the text
+        color: 'white', // Dark mode text color
+    },
+    pickerDropdown: {
+        position: 'absolute',
+        top: '100%',
+        width: '100%',
+        backgroundColor: '#333', // Dark mode background
+        borderColor: '#ccc',
+        borderWidth: 1,
+        zIndex: 1,
+    },
+    pickerDropdownItem: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ccc',
+        color: 'white', // Dark mode text color
+    },
+    // ...other styles...
+    modalContent: {
+        width: '95%',
+        padding: 20,
+        backgroundColor: '#333',
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: 'white',
+    },
+    modalLabel: {
+        flex: 1,
+        fontWeight: 'bold',
+        color: 'white',
+    },
+    modalInput: {
+        flex: 2,
+        borderColor: '#555',
+        borderWidth: 1,
+        padding: 5,
+        color: 'white',
+    },
+    saveButton: {
+        padding: 10,
+        backgroundColor: '#4CAF50',
+        borderRadius: 5,
+        marginRight: 10,
+    },
+    saveButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
     closeButton: {
         marginTop: 20,
         padding: 10,

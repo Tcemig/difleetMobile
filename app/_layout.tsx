@@ -18,6 +18,7 @@ import LoginScreen from './login';
 import VehicleIncidentsScreen from '@/app/(tabs)/vehicleIncidents';
 import CurrentAssignedVehiclesScreen from './(tabs)/currentAssignedVehicles';
 import PreTripCovInspectionDriverEntry from './(tabs)/preTripCovInspectionDriverEntry';
+import PreTripInspection_DashboardScreen from './(tabs)/pretripInspections/pti_Dashboard';
 
 export {
     ErrorBoundary,
@@ -34,6 +35,13 @@ const Stack = createStackNavigator();
 
 function CustomDrawerContent({ navigation }: DrawerContentComponentProps) {
     const [permissions, setPermissions] = useState<any>(null);
+    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+
+    const colorScheme = useColorScheme();
+    const styles = StyleSheet.create({
+        ...mainStyles,
+        ...(colorScheme === 'light' ? lightStyles : darkStyles),
+    });
 
     useEffect(() => {
         const fetchPermissions = async () => {
@@ -67,13 +75,13 @@ function CustomDrawerContent({ navigation }: DrawerContentComponentProps) {
                 </TouchableOpacity>
             )}
 
-            {hasRequiredPermissions('is_staff', 'is_superuser') && (
+            {hasRequiredPermissions('is_staff', 'is_superuser', 'is_tester') && (
                 <TouchableOpacity onPress={() => navigation.closeDrawer()}>
                     <Text style={styles.menuItem} onPress={() => navigation.navigate('Procurement')}>Procurement</Text>
                 </TouchableOpacity>
             )}
 
-            {hasRequiredPermissions('is_staff', 'is_superuser') && (
+            {hasRequiredPermissions('is_staff', 'is_superuser', 'is_tester') && (
                 <TouchableOpacity onPress={() => navigation.closeDrawer()}>
                     <Text style={styles.menuItem} onPress={() => navigation.navigate('Vehicle Incidents')}>Vehicle Incidents</Text>
                 </TouchableOpacity>
@@ -85,24 +93,50 @@ function CustomDrawerContent({ navigation }: DrawerContentComponentProps) {
                 </TouchableOpacity>
             )}
 
+            {hasRequiredPermissions('is_staff', 'is_superuser', 'is_manager', 'is_dispatcher') && (
+                <>
+                    <TouchableOpacity onPress={() => setIsDropdownVisible(!isDropdownVisible)} style={styles.dropdownToggle}>
+                        <Text style={styles.menuItem}>Operations</Text>
+                        <FontAwesome name={isDropdownVisible ? 'chevron-up' : 'chevron-down'} size={18} color={styles.menuItem.color} />
+                    </TouchableOpacity>
+                    {isDropdownVisible && (
+                        <View style={styles.dropdownContainer}>
+                            <View style={styles.dropdownSeparator_top}>
+                                <TouchableOpacity onPress={() => navigation.closeDrawer()}>
+                                    <Text style={[styles.menuItem, { paddingLeft: 20 }]} onPress={() => navigation.navigate('PreTrip Inspection Dashboard')}>Dashboard</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.dropdownSeparator_bottom}></View>
+                        </View>
+                    )}
+                </>
+            )}
+
             {hasRequiredPermissions('is_covDriver', 'is_ggDriver') && (
                 <TouchableOpacity onPress={() => navigation.closeDrawer()}>
                     <Text style={styles.menuItem} onPress={() => navigation.navigate('Pre Trip COV Inspection Driver Entry')}>Pre Trip Inspection</Text>
                 </TouchableOpacity>
             )}
 
-            <TouchableOpacity onPress={() => navigation.closeDrawer()}>
-                <Text style={styles.menuItem} onPress={() => navigation.navigate('Account Information')}>Account Info</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout}>
-                <Text style={styles.menuItem}>Logout</Text>
-            </TouchableOpacity>
+            <View style={styles.bottomMenu}>
+                <TouchableOpacity onPress={() => navigation.closeDrawer()}>
+                    <Text style={styles.menuItem} onPress={() => navigation.navigate('Account Information')}>Account Info</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleLogout}>
+                    <Text style={styles.menuItem}>Logout</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }
 
 function TabLayout() {
     const colorScheme = useColorScheme();
+    const styles = StyleSheet.create({
+        ...mainStyles,
+        ...(colorScheme === 'light' ? lightStyles : darkStyles),
+    });
     const [permissions, setPermissions] = useState<any>(null);
 
     useEffect(() => {
@@ -154,6 +188,7 @@ function TabLayout() {
             <Drawer.Screen name="Vehicle Incidents" component={VehicleIncidentsScreen} />
             <Drawer.Screen name="Current Assigned Vehicles" component={CurrentAssignedVehiclesScreen} />
             <Drawer.Screen name="Pre Trip COV Inspection Driver Entry" component={PreTripCovInspectionDriverEntry} />
+            <Drawer.Screen name="PreTrip Inspection Dashboard" component={PreTripInspection_DashboardScreen} />
             <Drawer.Screen name="Account Information" component={AccountInformationScreen} />
             
 
@@ -203,7 +238,23 @@ function RootLayoutNav() {
     );
 }
 
-const styles = StyleSheet.create({
+const mainStyles = StyleSheet.create({
+    headerIcon: {
+        width: 24,
+        height: 24,
+        marginRight: 15,
+    },
+    dropdownToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    bottomMenu: {
+        marginTop: 'auto',
+    },
+});
+
+const lightStyles = StyleSheet.create({
     menu: {
         flex: 1,
         width: '100%',
@@ -214,10 +265,45 @@ const styles = StyleSheet.create({
     menuItem: {
         fontSize: 18,
         marginVertical: 10,
+        color: 'black',
     },
-    headerIcon: {
-        width: 24,
-        height: 24,
-        marginRight: 15,
+    dropdownContainer: {
+        paddingLeft: 20,
+        borderColor: 'black',
+    },
+    dropdownSeparator_top: {
+        borderTopWidth: 1,
+        borderColor: 'black',
+    },
+    dropdownSeparator_bottom: {
+        borderBottomWidth: 1,
+        borderColor: 'black',
+    },
+});
+
+const darkStyles = StyleSheet.create({
+    menu: {
+        flex: 1,
+        width: '100%',
+        backgroundColor: '#333',
+        padding: 20,
+        paddingTop: 60,
+    },
+    menuItem: {
+        fontSize: 18,
+        marginVertical: 10,
+        color: 'white',
+    },
+    dropdownContainer: {
+        paddingLeft: 20,
+        borderColor: 'white',
+    },
+    dropdownSeparator_top: {
+        borderTopWidth: 1,
+        borderColor: 'white',
+    },
+    dropdownSeparator_bottom: {
+        borderBottomWidth: 1,
+        borderColor: 'white',
     },
 });
