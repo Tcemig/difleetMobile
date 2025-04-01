@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TextInput, Alert, ScrollView, Dimensions, View, Modal, TouchableOpacity, Button, Image, TouchableWithoutFeedback, FlatList } from 'react-native';
+import { StyleSheet, TextInput, Alert, ScrollView, Dimensions, View, Modal, TouchableOpacity, Button, Image, TouchableWithoutFeedback, useColorScheme, ActivityIndicator,  } from 'react-native';
 // import { launchCamera } from 'react-native-image-picker';
 // import { Picker } from '@react-native-picker/picker';
 import { Text} from '@/components/Themed';
 import NGROK_URL from '@/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Picker } from '@react-native-picker/picker'; // Install this package if not already installed
+import DropDownPicker from 'react-native-dropdown-picker';
 // import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 // import DateTimePicker from '@react-native-community/datetimepicker';
 // import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -17,7 +19,10 @@ import Svg, { Circle, Image as SvgImage } from 'react-native-svg';
 import { captureRef } from 'react-native-view-shot';
 // import RNFS from 'react-native-fs';
 import FormData from 'form-data';
+import { Float } from 'react-native/Libraries/Types/CodegenTypes';
 // import axios from 'axios';
+import * as Location from 'expo-location';
+
 
 
 interface InspectionReport {
@@ -31,48 +36,74 @@ interface InspectionReport {
     inspectionDateTime: string | null;
     inspectionDateTimeUTC: string | null;
     userUsernameSubmitted: string | null;
-    userEmailSubmitted: string | null;
+    pgl_corrected: boolean | null;
+    callbackURL: string | null;
+
+    timeOnPage: number | null; // Corrected from Float to number
+    geolocationData: Record<string, unknown> | null; // Corrected from JSON to Record<string, unknown>
 
     conditionTires: string;
-    conditionTiresComments: string;
+    conditionTiresNotes: string;
     conditionFrontBumper: string;
-    conditionFrontBumperComments: string;
+    conditionFrontBumperNotes: string;
     conditionRearBumper: string;
-    conditionRearBumperComments: string;
+    conditionRearBumperNotes: string;
     conditionSideMirrors: string;
-    conditionSideMirrorsComments: string;
+    conditionSideMirrorsNotes: string;
     conditionBodyDamage: string;
-    conditionBodyDamageComments: string;
+    conditionBodyDamageNotes: string;
     conditionBrakes: string;
-    conditionBrakesComments: string;
+    conditionBrakesNotes: string;
     conditionWindshield: string;
-    conditionWindshieldComments: string;
+    conditionWindshieldNotes: string;
     conditionWorkingLights: boolean | null;
-    conditionWorkingLightsComments: string | null;
+    conditionWorkingLightsNotes: string | null;
     conditionAccidentPacket: boolean | null;
-    conditionAccidentPacketComments: string | null;
+    conditionAccidentPacketNotes: string | null;
     conditionInterior: string;
-    conditionInteriorComments: string;
+    conditionInteriorNotes: string;
     conditionPhoneMount: boolean | null;
-    conditionPhoneMountComments: string | null;
+    conditionPhoneMountNotes: string | null;
     conditionSpareTire: boolean | null;
-    conditionSpareTireComments: string | null;
+    conditionSpareTireNotes: string | null;
+    conditionLeakingFluids: boolean | null;
+    conditionLeakingFluidsNotes: string | null;
+
+    adminGroundedNotes: string | null;
+    adminGroundedBy: string | null;
+    vehicleGrounded: boolean | null;
+    vehicleGroundedNotes: string | null;
+    vehicleUngroundedBy: string | null;
 }
 
 const inspectionReportItemKeys: Array<keyof InspectionReport> = [
     'vehicleId', 'vehicleVin', 'vehicleLicensePlate', 'hub', 'packetFile', 'vehicleDamageImage', 
-    'inspectionDateTime', 'inspectionDateTimeUTC', 'userUsernameSubmitted', 'userEmailSubmitted',
-    'conditionTires', 'conditionTiresComments', 'conditionFrontBumper', 'conditionFrontBumperComments',
-    'conditionRearBumper', 'conditionRearBumperComments', 'conditionSideMirrors', 'conditionSideMirrorsComments',
-    'conditionBodyDamage', 'conditionBodyDamageComments', 'conditionBrakes', 'conditionBrakesComments',
-    'conditionWindshield', 'conditionWindshieldComments', 'conditionWorkingLights', 'conditionWorkingLightsComments',
-    'conditionAccidentPacket', 'conditionAccidentPacketComments', 'conditionInterior', 'conditionInteriorComments',
-    'conditionPhoneMount', 'conditionPhoneMountComments', 'conditionSpareTire', 'conditionSpareTireComments',
+    'inspectionDateTime', 'inspectionDateTimeUTC', 'userUsernameSubmitted', 'pgl_corrected',
+    'callbackURL',
+
+    'timeOnPage', 'geolocationData',
+
+    'conditionTires', 'conditionTiresNotes', 'conditionFrontBumper', 'conditionFrontBumperNotes',
+    'conditionRearBumper', 'conditionRearBumperNotes', 'conditionSideMirrors', 'conditionSideMirrorsNotes',
+    'conditionBodyDamage', 'conditionBodyDamageNotes', 'conditionBrakes', 'conditionBrakesNotes',
+    'conditionWindshield', 'conditionWindshieldNotes', 'conditionWorkingLights', 'conditionWorkingLightsNotes',
+    'conditionAccidentPacket', 'conditionAccidentPacketNotes', 'conditionInterior', 'conditionInteriorNotes',
+    'conditionPhoneMount', 'conditionPhoneMountNotes', 'conditionSpareTire', 'conditionSpareTireNotes',
+    'conditionLeakingFluids', 'conditionLeakingFluidsNotes',
+
+    'adminGroundedNotes', 'adminGroundedBy', 'vehicleGrounded', 'vehicleGroundedNotes', 'vehicleUngroundedBy'
 ];
+
+type geoLocation = {
+    latitude: number;
+    longitude: number;
+    timestamp: number;
+};
 
 export default function PreTripCovInspectionsDriverEntry() {
     const [modalVisible, setModalVisible] = useState(false);
     const [inspectionStartValue, setInspectionStartValue] = useState('');
+    // const [isLoading, setIsLoading] = useState(true);
 
     // const [inspectionReportNewReport, setInspectionReportNewReport] = useState<InspectionReport | null>(null);
 
@@ -87,32 +118,44 @@ export default function PreTripCovInspectionsDriverEntry() {
         inspectionDateTime: null,
         inspectionDateTimeUTC: null,
         userUsernameSubmitted: null,
-        userEmailSubmitted: null,
+        pgl_corrected: null,
+        callbackURL: null,
+
+        timeOnPage: null,
+        geolocationData: null,
 
         conditionTires: '',
-        conditionTiresComments: '',
+        conditionTiresNotes: '',
         conditionFrontBumper: '',
-        conditionFrontBumperComments: '',
+        conditionFrontBumperNotes: '',
         conditionRearBumper: '',
-        conditionRearBumperComments: '',
+        conditionRearBumperNotes: '',
         conditionSideMirrors: '',
-        conditionSideMirrorsComments: '',
+        conditionSideMirrorsNotes: '',
         conditionBodyDamage: '',
-        conditionBodyDamageComments: '',
+        conditionBodyDamageNotes: '',
         conditionBrakes: '',
-        conditionBrakesComments: '',
+        conditionBrakesNotes: '',
         conditionWindshield: '',
-        conditionWindshieldComments: '',
+        conditionWindshieldNotes: '',
         conditionWorkingLights: null,
-        conditionWorkingLightsComments: '',
+        conditionWorkingLightsNotes: '',
         conditionAccidentPacket: null,
-        conditionAccidentPacketComments: '',
+        conditionAccidentPacketNotes: '',
         conditionInterior: '',
-        conditionInteriorComments: '',
+        conditionInteriorNotes: '',
         conditionPhoneMount: null,
-        conditionPhoneMountComments: '',
+        conditionPhoneMountNotes: '',
         conditionSpareTire: null,
-        conditionSpareTireComments: '',
+        conditionSpareTireNotes: '',
+        conditionLeakingFluids: null,
+        conditionLeakingFluidsNotes: '',
+
+        adminGroundedNotes: '',
+        adminGroundedBy: '',
+        vehicleGrounded: null,
+        vehicleGroundedNotes: '',
+        vehicleUngroundedBy: '',
     });
 
 
@@ -122,11 +165,23 @@ export default function PreTripCovInspectionsDriverEntry() {
     const [photoUris, setPhotoUris] = useState<string[]>([]);
     const svgRef = useRef<Svg>(null);
     const viewRef = useRef(null);
+    const [hubList, setHubList] = useState<string[]>([]); // Initialize as an empty array
+    const [selectedHub, setSelectedHub] = useState<string>(''); // Default to an empty string
+
+    const [refreshing, setRefreshing] = useState(false);
+
+    const [isLoading, setIsLoading] = useState(false);
 
     // Get the height of the screen
     const screenHeight = Dimensions.get('window').height * 0.76;
 
-
+    const colorScheme = useColorScheme();
+    const styles = StyleSheet.create({
+        ...mainStyles,
+        ...(colorScheme === 'light' ? lightStyles : darkStyles),
+    });
+    const placeholderTextColor = 
+        colorScheme === 'light' ? 'black' : 'white';
 
     useEffect(() => {
         requestCameraPermission();
@@ -139,40 +194,81 @@ export default function PreTripCovInspectionsDriverEntry() {
         }
     };
 
-    useEffect(() => {
-        const checkForInspection = async () => {
-            try {
-                const token = await AsyncStorage.getItem('userToken');
-                if (!token) {
-                    Alert.alert('Error', 'No authorization token found');
-                    return;
-                }
+    // useEffect(() => {
+    //     const checkForInspection = async () => {
+    //         try {
+    //             const token = await AsyncStorage.getItem('userToken');
+    //             if (!token) {
+    //                 Alert.alert('Error', 'No authorization token found');
+    //                 return;
+    //             }
 
-                const response = await fetch(`${NGROK_URL}/diMobileApp/api/preTripCovInspections/check_for_preTripInspection/`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Token ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+    //             const response = await fetch(`${NGROK_URL}/diMobileApp/api/preTripCovInspections/check_for_preTripInspection/`, {
+    //                 method: 'GET',
+    //                 headers: {
+    //                     'Authorization': `Token ${token}`,
+    //                     'Content-Type': 'application/json'
+    //                 }
+    //             });
 
-                const result = await response.json();
-                if (response.ok) {
-                    if (result.message === "No inspections report found") {
-                        setModalVisible(true);
-                    } else {
-                        setInspectionReport(result.report);
-                    }
-                } else {
-                    Alert.alert('Error', result.message);
-                }
-            } catch (error) {
-                Alert.alert('Error', 'Failed to check for inspection report.');
+    //             const result = await response.json();
+    //             if (response.ok) {
+    //                 if (result.message === "No inspections report found") {
+    //                     setModalVisible(true);
+    //                 } else {
+    //                     setInspectionReport(result.report);
+    //                 }
+    //             } else {
+    //                 Alert.alert('Error', result.message);
+    //             }
+    //         } catch (error) {
+    //             Alert.alert('Error', 'Failed to check for inspection report.');
+    //         }
+    //     };
+
+    //     checkForInspection();
+    // }, []);
+
+    const handleGetHubList = async () => {
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            if (!token) {
+                Alert.alert('Error', 'No authorization token found');
+                return;
             }
-        };
 
-        checkForInspection();
+            const response = await fetch(`${NGROK_URL}/diMobileApp/api/procurement/get_hub_list/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const data = await response.json();
+            if (response.ok && Array.isArray(data.hubList)) {
+
+                setHubList(data.hubList);
+
+                console.log('Hub List:', data.hubList);
+
+                // Set the first hub as the default selected value if available
+                if (data.hubList.length > 0) {
+                    setSelectedHub(data.hubList[0]);
+                }
+            } else {
+                Alert.alert('Error', data.message || 'Failed to get hub list');
+            }
+        } catch (error) {
+            console.error('Error fetching hub list:', error); // Log the error for debugging
+            Alert.alert('Error', 'An error occurred while getting the hub list');
+        }
+    };
+
+    useEffect(() => {
+        handleGetHubList();
     }, []);
+
 
     const handleStartInspection = async () => {
         try {
@@ -192,22 +288,23 @@ export default function PreTripCovInspectionsDriverEntry() {
     
             const data = await response.json();
             if (response.ok && data.message === 'Vehicle is in the system') {
-                Alert.alert('Vehicle is in the system');
-                // setInspectionReportNewReport(data.report);
+                // Alert.alert('Vehicle is in the system');
                 setInspectionReport(data.report);
-                //     ...inspectionReport,
-                //     vehicleId: data.report.vehicleId,
-                //     vehicleVin: data.report.vehicleVin,
-                //     vehicleLicensePlate: data.report.vehicleLicensePlate,
-                // });
+                setSelectedHub(data.report.hub);
+
+                // Start tracking time and location
+                startTrackingTime();
+                // startTrackingLocation();
                 
                 setModalVisible(false);
-
             }
             else if (response.ok && data.message === 'Vehicle Id, License Plate, VIN; Not found in database try a different search parameter.') {
                 Alert.alert('Vehicle Id, License Plate, VIN; Not found in database try a different search parameter.');
-            
-            } else {
+            }
+            else if (response.ok && data.message === 'That vehicle is grounded. Please contact dispatcher to fix or complete inspection on another vehicle.') {
+                Alert.alert('That vehicle is grounded. Please contact dispatcher to fix or complete inspection on another vehicle.');
+            }
+            else {
                 Alert.alert('Error', data.message || 'Failed to start inspection');
             
             }
@@ -329,18 +426,8 @@ export default function PreTripCovInspectionsDriverEntry() {
                 currentDateTime.getUTCMilliseconds()
             );
 
-
-            const uri = await captureRef(viewRef, {
-                format: 'png',
-                quality: 1,
-            });
-    
-            const base64Data = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    
-            const packetFile = `data:image/png;base64,${base64Data}`;
-
             // Convert base64 to a file-like object
-            const blob = await fetch(packetFile).then(res => res.blob());
+            // const blob = await fetch(packetFile).then(res => res.blob());
 
             const formData = new FormData();
 
@@ -361,15 +448,29 @@ export default function PreTripCovInspectionsDriverEntry() {
             //     }
             // });
 
-            // const fileName = `${inspectionReport?.vehicleId}/${username}/${timestamp}_inspection_report.png`;
-            const fileName = `${timestampUTC}_inspection_report.png`;
+            let packetFile = null;
 
-            // Append the new packetFile
-            formData.append('packetFile', {
-                uri: uri,
-                name: fileName,
-                type: 'image/png',
-            });
+            if (circlePositions.length > 0) {
+                const uri = await captureRef(viewRef, {
+                    format: 'png',
+                    quality: 1,
+                });
+    
+                const base64Data = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+                packetFile = `data:image/png;base64,${base64Data}`;
+
+                const fileName = `${timestampUTC}_inspection_report.png`;
+
+                formData.append('packetFile', {
+                    uri: uri,
+                    name: fileName,
+                    type: 'image/png',
+                });
+            }   
+
+
+            // Append Admin Grounded Vehicle Submission
+            formData.append('AdminGroundedVehicleSubmission', true);
 
             // Append photos if they exist
             photoUris.slice(0, 4).forEach((photoUri, index) => {
@@ -380,6 +481,13 @@ export default function PreTripCovInspectionsDriverEntry() {
                     type: 'image/jpeg',
                 });
             });
+
+            // Append time spent
+            formData.append('timeSpent', timeSpent.toFixed(2)); // Converts to a string with 2 decimal places
+
+            // Append geolocation data
+            // formData.append('locationData', JSON.stringify(locationData));
+
     
             const token = await AsyncStorage.getItem('userToken');
             if (!token) {
@@ -410,6 +518,56 @@ export default function PreTripCovInspectionsDriverEntry() {
         }
     };
 
+    let timeSpent = 0;
+    let locationData: geoLocation[] = []; // Explicitly define the type of locationData
+
+    const startTrackingTime = () => {
+        timeSpent = 0;
+        setInterval(() => {
+            timeSpent += 1; // Increment time in seconds
+        }, 1000);
+    };
+
+    const requestLocationPermission = async () => {
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert(
+                    'Permission Denied',
+                    'Permission to access location was denied. Please enable it in your device settings.'
+                );
+                return false;
+            }
+            return true;
+        } catch (error) {
+            console.error('Error requesting location permission:', error);
+            Alert.alert('Error', 'An error occurred while requesting location permissions.');
+            return false;
+        }
+    };
+
+    const startTrackingLocation = async () => {
+        setIsLoading(true); // Show a loader while requesting permissions
+        const hasPermission = await requestLocationPermission();
+        setIsLoading(false); // Hide the loader after permission is handled
+    
+        if (!hasPermission) {
+            return; // Exit if permission is not granted
+        }
+    
+        // Start tracking location
+        const locationInterval = setInterval(async () => {
+            try {
+                const location = await Location.getCurrentPositionAsync({});
+                const { latitude, longitude } = location.coords;
+                const timestamp = Date.now();
+                locationData.push({ latitude, longitude, timestamp });
+            } catch (error) {
+                console.error('Error fetching location:', error);
+            }
+        }, 5000);
+    };
+
     // Good Fair Repair Conditions
     const conditions = [
         { key: 'conditionTires', label: 'Tires', options: ['Good', 'Fair', 'Repair'] },
@@ -427,6 +585,7 @@ export default function PreTripCovInspectionsDriverEntry() {
         { key: 'conditionAccidentPacket', label: 'Accident Packet', options: ['Yes', 'No'] },
         { key: 'conditionPhoneMount', label: 'Phone Mount', options: ['Yes', 'No'] },
         { key: 'conditionSpareTire', label: 'Spare Tire', options: ['Yes', 'No'] },
+        { key: 'conditionLeakingFluids', label: 'Leaking Fluids', options: ['Yes', 'No'] },
     ];
 
 
@@ -435,12 +594,15 @@ export default function PreTripCovInspectionsDriverEntry() {
     }, [inspectionReport]);
 
 
-
     return (
-        <View style={styles.container}>
+        <View 
+            style={styles.container}
+        >
 
-            <TouchableOpacity style={{ borderWidth: 1, padding: 5, width: "50%"}} onPress={() => setModalVisible(true)}>
-                <Text style={{ textAlign: 'center', fontSize: 16, color: 'blue' }}>New Inspection Report</Text>
+            {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
+
+            <TouchableOpacity style={{ borderWidth: 1, padding: 5, width: "50%", borderColor: '#ccc'}} onPress={() => setModalVisible(true)}>
+                <Text style={{ textAlign: 'center', fontSize: 16, color: 'lightblue' }}>New Inspection Report</Text>
             </TouchableOpacity>
 
 
@@ -449,7 +611,12 @@ export default function PreTripCovInspectionsDriverEntry() {
             </View>
 
             <View style={{ borderWidth: 2, maxHeight: screenHeight, paddingTop: 5, paddingBottom: 5, paddingLeft: 2, paddingRight: 2 }}>
-                <ScrollView>
+                <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled={true}
+                    contentContainerStyle={{ flexGrow: 1 }}
+                >
+                    
 
                     <View style={styles.inspectionReportRow}>
                         <Text style={styles.inspectionReportHeader}>Vehicle ID:</Text>
@@ -492,15 +659,22 @@ export default function PreTripCovInspectionsDriverEntry() {
 
                     <View style={styles.inspectionReportRow}>
                         <Text style={styles.inspectionReportHeader}>HUB:</Text>
-                        <TextInput
-                            style={styles.inspectionReportTextInput}
-                            value={
-                                // inspectionReportNewReport?.hub ??
-                                inspectionReport?.hub ??
-                                ''
-                            }
-                            placeholder={inspectionReport?.hub ?? 'Please enter....'}
-                        />
+
+                        {hubList.length > 0 ? (
+                            <Picker
+                                selectedValue={selectedHub}
+                                onValueChange={(itemValue) => setSelectedHub(itemValue)}
+                                style={styles.picker}
+                                itemStyle={styles.pickerItem}
+                            >
+                                <Picker.Item label="Please select a hub" value="" />
+                                {hubList.map((hub) => (
+                                    <Picker.Item key={hub} label={hub} value={hub} />
+                                ))}
+                            </Picker>
+                        ) : (
+                            <Text>Loading hubs...</Text>
+                        )}
                     </View>
 
                     <View style={styles.inspectionReportRow}>
@@ -552,7 +726,7 @@ export default function PreTripCovInspectionsDriverEntry() {
                     </TouchableWithoutFeedback> */}
 
                     <View style={styles.inspectionReportRow}>
-                        <Button title="Take Picture" onPress={handleTakePicture} />
+                        <Button title="Take Picture(s)" onPress={handleTakePicture} />
                     </View>
 
                     {photoUris.length > 0 && (
@@ -598,9 +772,9 @@ export default function PreTripCovInspectionsDriverEntry() {
                                             multiline
                                             numberOfLines={4}
                                             placeholder="Add comments"
-                                            value={String(inspectionReport?.[`${condition.key}Comments` as keyof InspectionReport] ?? '')}
+                                            value={String(inspectionReport?.[`${condition.key}Notes` as keyof InspectionReport] ?? '')}
                                             onChangeText={(text) => setInspectionReport((prevReport) => 
-                                                prevReport ? { ...prevReport, [`${condition.key}Comments`]: text } : prevReport
+                                                prevReport ? { ...prevReport, [`${condition.key}Notes`]: text } : prevReport
                                             )}
                                         />
                                     </View>
@@ -620,8 +794,11 @@ export default function PreTripCovInspectionsDriverEntry() {
                                                 key={option}
                                                 style={[
                                                     styles.conditionOptionButton,
-                                                    inspectionReport?.[condition.key as keyof InspectionReport] === option && option === 'Yes' && styles.conditionGood,
-                                                    inspectionReport?.[condition.key as keyof InspectionReport] === option && option === 'No' && styles.conditionRepair,
+                                                    condition.key === 'conditionLeakingFluids'
+                                                        ? inspectionReport?.[condition.key as keyof InspectionReport] === option && option === 'Yes' && styles.conditionRepair ||
+                                                            inspectionReport?.[condition.key as keyof InspectionReport] === option && option === 'No' && styles.conditionGood
+                                                        : inspectionReport?.[condition.key as keyof InspectionReport] === option && option === 'Yes' && styles.conditionGood ||
+                                                            inspectionReport?.[condition.key as keyof InspectionReport] === option && option === 'No' && styles.conditionRepair,
                                                 ]}
                                                 onPress={() => setInspectionReport((prevReport) => 
                                                     prevReport ? { ...prevReport, [condition.key]: option } : prevReport
@@ -637,10 +814,16 @@ export default function PreTripCovInspectionsDriverEntry() {
                                             multiline
                                             numberOfLines={4}
                                             placeholder="Add comments"
-                                            value={String(inspectionReport?.[`${condition.key}Comments` as keyof InspectionReport] ?? '')}
-                                            onChangeText={(text) => setInspectionReport((prevReport) => 
-                                                prevReport ? { ...prevReport, [`${condition.key}Comments`]: text } : prevReport
-                                            )}
+                                            value={String(inspectionReport?.[`${condition.key}Notes` as keyof InspectionReport] ?? '')}
+                                            onChangeText={(text) =>
+                                                setInspectionReport((prevReport) => {
+                                                    if (!prevReport) return prevReport; // Ensure prevReport is not null
+                                                    return {
+                                                        ...prevReport,
+                                                        [`${condition.key}Notes`]: text,
+                                                    } as InspectionReport; // Explicitly cast to InspectionReport
+                                                })
+                                            }
                                         />
                                     </View>
                                 </View>
@@ -669,12 +852,13 @@ export default function PreTripCovInspectionsDriverEntry() {
                     onPressOut={() => setModalVisible(false)}
                 >
                     <View style={styles.modalView}>
-                        <Text style={{ fontSize: 16, paddingBottom: 10, fontWeight: 'bold' }}>No Inspection Report Submitted Today</Text>
-                        <Text style={{ paddingBottom: 5 }}>Please enter: <Text style={{ textDecorationLine: 'underline' }}>Vehicle Id</Text>, <Text style={{ textDecorationLine: 'underline' }}>VIN</Text>, or <Text style={{ textDecorationLine: 'underline' }}>License Plate</Text></Text>
-                        <Text style={{ paddingBottom: 15 }}>Entry <Text style={{ fontWeight: 'bold' }}>DOES NOT</Text> need to be case sensitive</Text>
+                        <Text style={[styles.verifyVehicleText, { fontSize: 16, paddingBottom: 10, fontWeight: 'bold' }]}>No Inspection Report Submitted Today</Text>
+                        <Text style={[styles.verifyVehicleText, { paddingBottom: 5 }]}>Please enter: <Text style={[styles.verifyVehicleText, { textDecorationLine: 'underline' }]}>Vehicle Id</Text>, <Text style={[styles.verifyVehicleText, { textDecorationLine: 'underline' }]}>VIN</Text>, or <Text style={[styles.verifyVehicleText, { textDecorationLine: 'underline' }]}>License Plate</Text></Text>
+                        <Text style={[styles.verifyVehicleText, { paddingBottom: 15 }]}>Entry <Text style={[styles.verifyVehicleText, { fontWeight: 'bold' }]}>DOES NOT</Text> need to be case sensitive</Text>
                         <TextInput
                             style={{ height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 15, width: 250, paddingHorizontal: 10, textAlign: 'center' }} // Set a fixed width
                             placeholder="Please enter...."
+                            placeholderTextColor="black"
                             value={inspectionStartValue}
                             onChangeText={setInspectionStartValue}
                         />
@@ -687,7 +871,7 @@ export default function PreTripCovInspectionsDriverEntry() {
     );
 }
 
-const styles = StyleSheet.create({
+const mainStyles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 10,
@@ -698,21 +882,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 22,
     },
-    modalView: {
-        margin: 5,
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 20,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-    },
+    
 
     inspectionReportRow: {
         flexDirection: 'row', 
@@ -727,13 +897,7 @@ const styles = StyleSheet.create({
         // borderRightWidth: 2, 
         textAlign: 'center'
     },
-    inspectionReportTextInput: {
-        height: 40, 
-        borderColor: 'gray', 
-        borderWidth: 1, 
-        width: '50%', 
-        textAlign: 'center'
-    },
+    
 
     vanDamagePdfImage: {
         width: '100%',
@@ -750,12 +914,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
     },
 
-    previewContainer: {
-        marginTop: 10,
-        padding: 10,
-        backgroundColor: '#f9f9f9',
-        borderRadius: 5,
-    },
+    
     previewText: {
         fontSize: 16,
         fontWeight: 'bold',
@@ -784,6 +943,10 @@ const styles = StyleSheet.create({
         width: '45%', // Adjust the width to fit two items per row
     },
 
+    verifyVehicleText: {
+        color: 'black',
+    },
+
 
     conditionReportRow: {
         flexDirection: 'row', 
@@ -798,20 +961,8 @@ const styles = StyleSheet.create({
         // borderRightWidth: 2, 
         textAlign: 'center'
     },
-    conditionTextArea: {
-        height: 100,
-        borderColor: 'gray',
-        borderWidth: 1,
-        padding: 5,
-    },
-    conditionOptionButton: {
-        padding: 6,
-        borderWidth: 1,
-        borderColor: 'gray',
-        marginBottom: 5,
-        alignItems: 'center',
-        backgroundColor: 'transparent',
-    },
+    
+    
     conditionGood: {
         backgroundColor: 'green',
     },
@@ -821,8 +972,142 @@ const styles = StyleSheet.create({
     conditionRepair: {
         backgroundColor: 'red',
     },
-    conditionOptionText: {
+
+    dropdown: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 5,
+        paddingHorizontal: 10,
+        height: 40,
+    },
+    dropdownContainer: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+    },
+
+    picker: {
+        height: 40, // Ensure the Picker has a proper height
+        width: '50%', // Set the width to fill the container
+        justifyContent: 'center', // Center the text vertically
+        overflow: 'hidden', // Hide the overflowing items
+    },
+    pickerItem: {
+        textAlign: 'center', // Center the text horizontally
+        fontSize: 16, // Adjust font size as needed
+    },
+});
+
+const lightStyles = StyleSheet.create({
+    modalView: {
+        margin: 5,
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+
+    inspectionReportTextInput: {
+        height: 40, 
+        borderColor: 'gray', 
+        borderWidth: 1, 
+        width: '50%', 
+        textAlign: 'center',
         color: 'black',
     },
 
+    previewContainer: {
+        marginTop: 10,
+        padding: 10,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 5,
+    },
+
+    conditionOptionButton: {
+        padding: 6,
+        borderWidth: 1,
+        borderColor: 'gray',
+        marginBottom: 5,
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+    },
+    conditionOptionText: {
+        color: 'black',
+    },
+    conditionTextArea: {
+        height: 100,
+        borderColor: 'gray',
+        borderWidth: 1,
+        padding: 5,
+        color: 'black',
+    },
+
+    inspectionReportHubTextInput: {
+        color: 'black',
+    },
+
+});
+
+const darkStyles = StyleSheet.create({
+    modalView: {
+        margin: 5,
+        backgroundColor: '#ccc',
+        borderRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+
+    inspectionReportTextInput: {
+        height: 40, 
+        borderColor: '#ccc', 
+        borderWidth: 1, 
+        width: '50%', 
+        textAlign: 'center',
+        color: 'black',
+    },
+
+    previewContainer: {
+        marginTop: 10,
+        padding: 10,
+        backgroundColor: '#ccc',
+        borderRadius: 5,
+    },
+
+    conditionOptionButton: {
+        padding: 6,
+        borderWidth: 1,
+        borderColor: 'gray',
+        marginBottom: 5,
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+    },
+    conditionOptionText: {
+        color: 'white',
+    },
+    conditionTextArea: {
+        height: 100,
+        borderColor: 'gray',
+        borderWidth: 1,
+        padding: 5,
+        color: 'white',
+    },
+
+    inspectionReportHubTextInput: {
+        color: 'white',
+    },
 });

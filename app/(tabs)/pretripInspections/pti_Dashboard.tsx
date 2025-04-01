@@ -7,8 +7,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { DrawerParamList, RootStackParamList } from '../../paramlists';
+
 // import { CheckBox } from 'react-native-elements';
 // import CheckBox from '@react-native-community/checkbox';
+
+type NavigationProp = DrawerNavigationProp<DrawerParamList, 'Pre Trip COV Inspection Driver Entry'>;
 
 interface pretripInspectionItems {
     id: number;
@@ -74,6 +80,8 @@ export default function PreTripInspection_DashboardScreen() {
     const [isUngroundChecked, setIsUngroundChecked] = useState<boolean>(false);
     const [ungroundNotes, setUngroundNotes] = useState<string>('');
 
+    
+    const navigation = useNavigation<NavigationProp>();
 
     const colorScheme = useColorScheme();
     const styles = StyleSheet.create({
@@ -209,7 +217,11 @@ export default function PreTripInspection_DashboardScreen() {
     return (
         <View style={styles.container}>
 
-            {loading ? (
+        <TouchableOpacity style={styles.groundVehicleButton} onPress={() => navigation.navigate('Pre Trip COV Inspection Driver Entry')}>
+            <Text style={styles.groundVehicleButtonText} >Ground Vehicle</Text>
+        </TouchableOpacity>
+
+            {/* {loading ? (
                 <ActivityIndicator size="large" color="#0000ff" />
             ) : totalVehicleCount ? (
                 <View >
@@ -217,7 +229,7 @@ export default function PreTripInspection_DashboardScreen() {
                 </View>
             ) : (
                 <Text>No Data Pulled</Text>
-            )}
+            )} */}
 
             <Text style={styles.title}>Grounded Vehicles</Text>
 
@@ -225,12 +237,12 @@ export default function PreTripInspection_DashboardScreen() {
                 <ActivityIndicator size="large" color="#0000ff" />
             ) : groundedVehicles ? (
                 <View>
-                    <View style={styles.grid}>
+                    <View style={styles.groundedGrid}>
                         {groundedVehicles.map((vehicle, index) => (
                             <TouchableOpacity
                                 key={vehicle.id}
                                 style={[
-                                    styles.gridItem,
+                                    styles.groundedGridItem,
                                     (index + 1) % 3 === 0 && styles.gridItemLastInRow,
                                 ]}
                                 onPress={() => handleVehiclePress(vehicle)}
@@ -369,6 +381,21 @@ const mainStyles = StyleSheet.create({
         color: 'black',
     },
 
+    groundedGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    groundedGridItem: {
+        flexBasis: '30%',
+        marginBottom: 10,
+        padding: 10,
+        backgroundColor: '#ccc',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 5,
+    },
+
     modalContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -434,6 +461,18 @@ const lightStyles = StyleSheet.create({
     ungroundedNotesText: {
         color: 'black',
     },
+
+    groundVehicleButton: {
+        backgroundColor: '#007BFF', // Button background color
+        padding: 10,
+        borderRadius: 5,
+        alignItems: 'center',
+    },
+    groundVehicleButtonText: {
+    color: 'black', // Text color
+    fontSize: 16,
+    fontWeight: 'bold',
+    },
 });
 
 const darkStyles = StyleSheet.create({
@@ -471,5 +510,17 @@ const darkStyles = StyleSheet.create({
 
     ungroundedNotesText: {
         color: 'white',
+    },
+
+    groundVehicleButton: {
+        backgroundColor: '#007BFF', // Button background color
+        padding: 10,
+        borderRadius: 5,
+        alignItems: 'center',
+    },
+    groundVehicleButtonText: {
+    color: '#FFFFFF', // Text color
+    fontSize: 16,
+    fontWeight: 'bold',
     },
 });
