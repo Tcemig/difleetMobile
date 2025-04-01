@@ -8,6 +8,7 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "permissions": ["LOCATION"],
     "splash": {
       "image": "./assets/images/deliver-it_NewLogoOnly_1024.png",
       "resizeMode": "contain",
@@ -20,7 +21,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.deliverit.difleet"
+      "bundleIdentifier": "com.deliverit.difleet",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to track your position during the inspection."
+        }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +32,8 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.deliverit.difleet",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
     "web": {
       "bundler": "metro",
