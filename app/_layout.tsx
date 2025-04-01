@@ -20,6 +20,8 @@ import CurrentAssignedVehiclesScreen from './(tabs)/currentAssignedVehicles';
 import PreTripCovInspectionDriverEntry from './(tabs)/preTripCovInspectionDriverEntry';
 import PreTripInspection_DashboardScreen from './(tabs)/pretripInspections/pti_Dashboard';
 
+import { DrawerParamList, RootStackParamList } from './paramlists';
+
 export {
     ErrorBoundary,
 } from 'expo-router';
@@ -30,8 +32,8 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
-const Drawer = createDrawerNavigator();
-const Stack = createStackNavigator();
+const Drawer = createDrawerNavigator<DrawerParamList>();
+const Stack = createStackNavigator<RootStackParamList>();
 
 function CustomDrawerContent({ navigation }: DrawerContentComponentProps) {
     const [permissions, setPermissions] = useState<any>(null);

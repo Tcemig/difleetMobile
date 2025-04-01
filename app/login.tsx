@@ -140,7 +140,7 @@ export default function LoginScreen() {
             {isPortrait && (
                 <View style={styles.imageContainer}>
                     <Image
-                        source={require('../assets/images/difleet_loginpage.png')}
+                        source={require('../assets/images/difleet_loginpage-removebg-preview.png')}
                         style={styles.logoImage}
                     />
                 </View>
